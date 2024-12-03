@@ -1,0 +1,6 @@
+{
+  "port": 5000,
+  "jwtSecret": "Roman mern",
+  "mongoUri": "mongodb://splinter:121212@127.0.0.1:27017/test?authMechanism=DEFAULT", 
+  "baseUrl": "http://localhost:5000"
+}
