@@ -1,0 +1,15 @@
+{	  
+  "auth.reg.messageMinLongPassword": "Минимальная длина пароля 6 символов",
+	"auth.reg.messageDataIncorrect": "Некорректные данные при регистрации",
+  "auth.reg.messageAlreadyExists": "Такой пользователь уже существует",
+	"auth.reg.messageUserCreated": "Пользователь создан",
+	"auth.reg.messageVerify": "Подтвердите свой Email через почту",
+
+	"auth.login.messageEmailUncorrect": "Некорректный email",
+	"auth.login.messageInputPassword": "Введите пароль",
+  "auth.login.messageDataUncorrect": "Некорректные данные при входе в систему",
+	"auth.login.messageUserNotFound": "Пользователь не найден",
+  "auth.login.messagePasswordIncorrect": "Неверный пароль, попробуйте снова",
+  
+	"auth.noAuth": "Нет авторизации"
+}

@@ -2,5 +2,10 @@
   "port": 5000,
   "jwtSecret": "Roman mern",
   "mongoUri": "mongodb://splinter:121212@127.0.0.1:27017/test?authMechanism=DEFAULT", 
-  "baseUrl": "http://localhost:5000"
+  "baseUrl": "http://localhost:5000",
+  "baseUrlFront": "http://localhost:5173",
+  "fileRegPath": "C:\\Project\\mern-server\\files",
+  "fileCategoryPath": "C:\\Project\\mern-server\\categoryFiles",
+  "VAPID_PUBLIC_KEY": "hhh",
+  "VAPID_PRIVATE_KEY": "hhh"
 }

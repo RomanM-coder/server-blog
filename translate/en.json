@@ -1,0 +1,15 @@
+{
+	"auth.reg.messageEmailUncorrect": "Incorrect email address",
+	"auth.reg.messageMinLongPassword": "The minimum password length is 6 characters",
+	"auth.reg.messageDataIncorrect": "Incorrect data during registration",
+	"auth.reg.messageAlreadyExists": "Such a user already exists",
+	"auth.reg.messageUserCreated": "The user has been created",
+	"auth.reg.messageVerify": "Confirm your email address",
+
+	"auth.login.messageEmailUncorrect": "Incorrect email address",
+	"auth.login.messageInputPassword": "Input password",
+	"auth.login.messageDataUncorrect": "Incorrect data to log in to the system",
+	"auth.login.messageUserNotFound": "The user was not found",
+	"auth.login.messagePasswordIncorrect": "Invalid password, try again",
+	"auth.noAuth": "No authorization required"
+}

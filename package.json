@@ -4,8 +4,8 @@
   "description": "mern",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js",
-    "server": "nodemon app.js"
+    "start": "node dist/app.js",
+    "server": "cross-env nodemon --watch 'src/**/*.ts' --exec 'npx ts-node' src/app.ts"
   },
   "keywords": [
     "node",
@@ -14,16 +14,37 @@
   "author": "Roman M <r.Splinter@ya.ru>",
   "license": "ISC",
   "dependencies": {
+    "@types/socket.io": "^3.0.1",
     "bcrypt": "^5.1.1",
     "config": "^3.3.12",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^4.21.0",
+    "express-fileupload": "^1.5.1",
     "express-validator": "^7.2.0",
+    "i18n": "^0.15.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.6.3",
-    "shortid": "^2.2.16"
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.16",
+    "shortid": "^2.2.8",
+    "socket.io": "^4.8.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "@types/bcrypt": "^5.0.2",
+    "@types/config": "^3.3.5",
+    "@types/express": "^5.0.0",
+    "@types/express-fileupload": "^1.5.1",
+    "@types/i18n": "^0.13.12",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.13.1",
+    "@types/nodemailer": "^6.4.17",
+    "@types/web-push": "^3.6.4",
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.1.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
   }
 }

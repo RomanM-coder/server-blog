@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES6", // Версия JavaScript
+    "module": "commonjs", // Модульная система
+    "strict": true, // Включение строгой типизации
+    "esModuleInterop": true, // Упрощение работы с CommonJS и ES модулями
+    "strictNullChecks": true,    
+    // "skipLibCheck": true, // Пропуск проверки типов в библиотеках
+    // "forceConsistentCasingInFileNames": true, // Проверка регистра имен файлов
+    "outDir": "./dist", // Папка для скомпилированных файлов
+    "rootDir": "./src"//,
+    //"typeRoots": ["./types"]// "./node_modules/@types", 
+  },
+  "include": ["src/**/*"], // Какие файлы компилировать
+  "exclude": ["node_modules"] // Какие файлы игнорировать
+}
