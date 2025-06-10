@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import config from 'config'
+// import config from 'config'
 import fs from 'fs'
 import fileService from '../routes/fileService'
 import User from '../models/User'
@@ -15,6 +15,10 @@ import CustomRequest from '../middleware/auth.middleware'
 import Comment from '../models/Comment'
 import Rucomment from '../models/Rucomment'
 import { UploadedFile } from 'express-fileupload'
+import dotenv from "dotenv"
+dotenv.config() // Загрузка переменных окружения
+
+const FILE_CATEGORY_PATH = process.env.FILE_CATEGORY_PATH
 
 const router = Router()
 router.use(authMiddleware, adminMiddleware)
@@ -31,14 +35,14 @@ router.post('/uploadFileCategory', async (req: Request, res: Response) => {
       const category = await Category.findOne({ name })
       if (!category) res.status(400).json({ message: 'Category not found' })
       else {  
-        const dirPath = `${config.get('fileCategoryPath')}\\${name}`
+        const dirPath = `${FILE_CATEGORY_PATH}\\${name}`
         if (fs.existsSync(dirPath)) {
           res.status(400).json({ message: 'Directory already exist' })
         } else {
           // console.log('filePath ', filePath)   
           await fileService.createDir(dirPath)
 
-          const filePath = `${config.get('fileCategoryPath')}\\${name}\\${file.name}`
+          const filePath = `${FILE_CATEGORY_PATH}\\${name}\\${file.name}`
           file.mv(filePath)
 
           const type = file.name.split('.').pop()

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import config from 'config'
+// import config from 'config'
 import fs from 'fs'
 import fileService from '../routes/fileService'
 import User from '../models/User'
@@ -10,6 +10,12 @@ import jwt from 'jsonwebtoken'
 import nodemailer from 'nodemailer'
 import __ from 'i18n'
 // const sendEmail = require('../helper/email')
+import dotenv from "dotenv"
+dotenv.config() // Загрузка переменных окружения
+
+const FILE_REG_PATH = process.env.FILE_REG_PATH
+const JWT_SECRET = process.env.JWT_SECRET
+const BASE_URL_FRONT = process.env.BASE_URL_FRONT
 const router = Router()
 
 // api/auth/register
@@ -53,7 +59,7 @@ router.post(
       await user.save()      
 
       const currentUser = await User.findOne({ email })
-      const filePath = `${config.get('fileRegPath')}\\${currentUser!._id}`
+      const filePath = `${FILE_REG_PATH}\\${currentUser!._id}`
       console.log('filePath', filePath)
 
       await fileService.createDir(filePath) // new File({userId: currentUser.id, name: ''})     
@@ -70,17 +76,21 @@ router.post('/verifyemail', async (req, res) => {
     const email = req.body.email
     const user = await User.findOne({ email })
     if (!user) res.status(400).json({ message: 'пользователь не найден' })
-    else {  
+    else {
+      if (!JWT_SECRET) {
+        throw new Error("JWT_SECRET is not defined in the environment variables.");
+      }
       const confirm = jwt.sign(
         { userId: user._id },
-        config.get<string>('jwtSecret'),
+        // config.get<string>('jwtSecret'),
+        JWT_SECRET,
         // {expiresIn: 60} 
         { expiresIn: '1h' }
       )
       const confirmToken = new Token({ userId: user._id, token: confirm })
       await confirmToken.save()
 
-      const messageConfirm = `${config.get('baseUrlFront')}/auth/verify/${user.email}/${user._id}/${confirm}`
+      const messageConfirm = `${BASE_URL_FRONT}/auth/verify/${user.email}/${user._id}/${confirm}`
       console.log('messageConfirm ', messageConfirm)
 
       const emailTemplate = (username: string, link: string) => `
@@ -192,10 +202,14 @@ router.post(
           res.status(400).json({ message: res.__('auth.login.messagePasswordIncorrect') })
         } else {
           console.log('user.id: ---', user.id)
+          if (!JWT_SECRET) {
+            throw new Error("JWT_SECRET is not defined in the environment variables.");
+          }
 
           const token = jwt.sign(
             { userId: user.id },
-            config.get<string>('jwtSecret'),
+            // config.get<string>('jwtSecret'),
+            JWT_SECRET,
             // {expiresIn: 60} 
             { expiresIn: '10h' }
           )

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import config from 'config'
+// import config from 'config'
 import fs from 'fs'
 import fileService from '../routes/fileService'
 import User from '../models/User'
@@ -14,6 +14,11 @@ import CustomRequest from '../middleware/auth.middleware'
 import Comment from '../models/Comment'
 import Rucomment from '../models/Rucomment'
 import { UploadedFile } from 'express-fileupload'
+import dotenv from "dotenv"
+dotenv.config() // Загрузка переменных окружения
+
+const FILE_CATEGORY_PATH = process.env.FILE_CATEGORY_PATH
+const FILE_REG_PATH = process.env.FILE_REG_PATH
 
 const router = Router()
 
@@ -26,7 +31,7 @@ router.post('/upload',
       const user = await User.findOne({ email: req.body.email })
       if (!user) res.status(400).json({ message: 'user not found' })
       else {  
-        const path = `${config.get('fileRegPath')}\\${user._id}\\${file.name}`
+        const path = `${FILE_REG_PATH}\\${user._id}\\${file.name}`
 
         if (fs.existsSync(path)) {
           res.status(400).json({ message: 'File already exist' })
@@ -69,7 +74,7 @@ router.get('/download',
           console.log('category.name ', category.name)
           console.log('fileCategory.name ', fileCategory.name)
 
-          const path = config.get('fileCategoryPath') + '\\' + category.name + '\\' + fileCategory.name
+          const path = FILE_CATEGORY_PATH + '\\' + category.name + '\\' + fileCategory.name
           console.log('path=', path)
 
           if (fs.existsSync(path)) return res.download(path, fileCategory.name)

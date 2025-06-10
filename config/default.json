@@ -5,7 +5,5 @@
   "baseUrl": "http://localhost:5000",
   "baseUrlFront": "http://localhost:5173",
   "fileRegPath": "C:\\Project\\mern-server\\files",
-  "fileCategoryPath": "C:\\Project\\mern-server\\categoryFiles",
-  "VAPID_PUBLIC_KEY": "hhh",
-  "VAPID_PRIVATE_KEY": "hhh"
+  "fileCategoryPath": "C:\\Project\\mern-server\\categoryFiles"
 }

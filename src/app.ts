@@ -20,9 +20,10 @@ import adminFileRouter from './routes/adminFile.routes'
 import adminUserRouter from './routes/adminUser.routes'
 import adminLogRouter from './routes/adminLog.routes'
 import pushNotify from './routes/pushNotify'
-import webPush from 'web-push'
-import { config as configEnv} from 'dotenv'
-configEnv()
+import dotenv from "dotenv"
+dotenv.config() // Загрузка переменных окружения
+// import { config as configEnv} from 'dotenv'
+// configEnv()
 
 interface JoinRoomData {
   room: string
@@ -101,7 +102,7 @@ app.use('/api/admin/post', adminPostRouter)
 app.use('/api/admin/comment', adminCommentRouter)
 app.use('/api/admin/user', adminUserRouter)
 app.use('/api/admin/log', adminLogRouter)
-app.use('/api/notify', pushNotify)
+// app.use('/api/notify', pushNotify)
 
 // app.use('/api/admin/file', adminFileRouter)
 // app.use('/t', require('./routes/redirect.routes'))
@@ -150,13 +151,20 @@ io.on('connection', (socket) => {
   })
   // userHandlers(io, socket)
 })
-
-const PORT = config.get('port') || 5000
+const PORT = process.env.PORT || 5000
+// const PORT = config.get('port') || 5000
 
 async function start() {
   try {
-    await mongoose.connect(config.get('mongoUri'), {
-
+    if (!process.env.MONGO_URI) {
+      throw new Error("MONGO_URI is not defined in the environment variables.");
+    }
+    if (!PORT) {
+      throw new Error("PORT is not defined in the environment variables.");
+    }
+    
+    // await mongoose.connect(config.get('mongoUri'), {
+    await mongoose.connect(process.env.MONGO_URI, {
     })
     server.listen(PORT, () => console.log(`App has been started port ${PORT}`))
   } catch (event) {
