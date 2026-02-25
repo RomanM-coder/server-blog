@@ -1,216 +1,170 @@
 import { Router, Request, Response } from 'express'
-import { Server } from 'socket.io'
-import { UploadedFile } from 'express-fileupload'
-import config from 'config'
-import fs from 'fs'
-import fileService from './fileService' 
 import Category from '../models/Category'
 import Rucategory from '../models/Rucategory'
-import Post from '../models/Post'
-import Rupost from '../models/Rupost'
-import FileCategory from '../models/FileCategory'
+import User from '../models/User'
+import { handlerError } from '../handlers/handlerError'
 import authMiddleware from '../middleware/auth.middleware'
-import { Types, SortOrder } from 'mongoose'
+import { Types } from 'mongoose'
+
 const router = Router()
 
-// interface CustomRequestIo extends Request {
-//   io?: Server; // Добавляем свойство io
-// }
-
 interface ICategory {
-  _id: Types.ObjectId,
-  name: string,
-  link: string,
+  _id: Types.ObjectId
+  name: string
+  link: string
   description: string
 }
 
 interface IRuCategory {
-  _id: Types.ObjectId,
-  name: string, 
-  description: string,
+  _id: Types.ObjectId
+  name: string
+  link: string
+  description: string
   categoryId: Types.ObjectId
+}
+
+// функция для получения IRuCategoryFull[] из ICategory[]
+const getRuCategories = async (
+  categories: ICategory[],
+  outCategories: ICategory[],
+): Promise<ICategory[]> => {
+  // Собираем все Id из en-категорий
+  const Ids = categories.map((category) => category._id.toString())
+
+  // Один запрос для всех ru-категорий
+  const rucategories: IRuCategory[] = await Rucategory.find({
+    categoryId: { $in: Ids },
+  }).lean<IRuCategory[]>()
+
+  // Создаем Map для быстрого поиска ruCategory по categoryId
+  const ruCategoryMap = new Map(
+    rucategories.map((ruCategory) => [
+      ruCategory.categoryId!.toString(),
+      ruCategory,
+    ]),
+  )
+
+  // Обновляем категории
+  outCategories = categories.map((category) => {
+    const matchingRuCategory = ruCategoryMap.get(category._id.toString())
+    if (matchingRuCategory) {
+      return {
+        ...category,
+        name: matchingRuCategory.name,
+        description: matchingRuCategory.description,
+      }
+    }
+    return category // Если нет соответствия, оставляем оригинал категории(en)
+  })
+  return outCategories
 }
 
 router.use(authMiddleware)
 
+// get all categories
 router.get('/', async (req: Request, res: Response) => {
   try {
-    let cats: ICategory[] = []            
-    const categories = await Category.find()
-    console.log('accept-language', req.headers['accept-language'])   
+    console.log('start   get all categories   /')
+    let outCategories: ICategory[] = []
+    const categories = await Category.find().lean<ICategory[]>()
+    console.log('accept-language', req.headers['accept-language'])
+
     // for language = ru
     if (req.headers['accept-language'] === 'ru') {
-      const rucategories = await Rucategory.find()
-      console.log('rucategories=', rucategories)
-      
-      categories.map((category) => {       
-        console.log('category._id=', category._id)
-                
-        const rucategory = rucategories.find((cat_ru) => cat_ru.categoryId.toString() === category._id.toString())
-        console.log('rucategory=', rucategory)
-        const cat: ICategory = {
-          _id : category._id,
-          name: rucategory!.name,
-          description: rucategory!.description,
-          link: category.link
+      // Собираем все Id из en-категорий
+      const Ids = categories.map((category) => category._id.toString())
+
+      // Один запрос для всех ru-категорий
+      const rucategories: IRuCategory[] = await Rucategory.find({
+        categoryId: { $in: Ids },
+      }).lean<IRuCategory[]>()
+
+      // Создаем Map для быстрого поиска ruCategory по categoryId
+      const ruCategoryMap = new Map(
+        rucategories.map((ruCategory) => [
+          ruCategory.categoryId!.toString(),
+          ruCategory,
+        ]),
+      )
+
+      // Обновляем категории
+      outCategories = categories.map((category) => {
+        const matchingRuCategory = ruCategoryMap.get(category._id.toString())
+        if (matchingRuCategory) {
+          return {
+            ...category,
+            title: matchingRuCategory.name,
+            sections: matchingRuCategory.description,
+          }
         }
-        cats.push(cat)        
+        return category // Если нет соответствия, оставляем оригинал категории(en)
       })
-      console.log('cats= ', cats)
-      res.json(cats)    
+      outCategories = await getRuCategories(categories, outCategories)
+      console.log('outCategories-RU= ', outCategories)
+
+      res.status(200).json({ success: true, outCategories })
     } else {
-      console.log('categories= ', categories)
-      res.json(categories)}
-        
-  } catch(e) {
-    res.status(500).json({message: 'Что-то пошло не так.'})
-  }
-})
+      outCategories = categories
+      console.log('outCategories-EN= ', outCategories)
 
-router.get('/count', async (req: Request, res: Response) => {
-  try {        
-    const categories = await Category.find()      
-    const categoriesCount = categories.length
-
-    res.json(categoriesCount)    
-  } catch(e) {
-    handlerError(e, res)
-  }
-})
-
-router.get('/search', async (req: Request, res: Response) => {
-  try {
-    let cats: ICategory[] = [] // for language = ru
-    let categorySearch: ICategory[] = []
-    const query: string = req.query.query as string
-    console.log('query=', query)
-
-    let categories: ICategory[] = await Category.find()
-    if (!categories) res.status(400).json({ message: 'категории не найдены' })
-    else {  
-      // language = ru
-      if (req.headers['accept-language'] === 'ru') {
-        const rucategories = await Rucategory.find()
-        console.log('rucategories=', rucategories)
-        
-        categories.map((category) => {       
-          console.log('category._id=', category._id)
-                  
-          const rucategory = rucategories.find((cat_ru) => cat_ru.categoryId.toString() === category._id.toString())
-          console.log('rucategory=', rucategory)
-          const cat = {
-            _id : category._id,
-            name: rucategory!.name,
-            description: rucategory!.description,
-            link: category.link
-          }
-          cats.push(cat)        
-        })
-        console.log('cats= ', cats)
-        categories = cats            
-      }    
-
-      if (query !== "") { 
-        categories.filter((category) => {      
-        
-          if (category.name.trim().toLowerCase().includes(query.toLowerCase())) {
-            categorySearch.push(category)
-            console.log('--------------', categorySearch.length)
-            
-            //returns filtered element array
-            return category
-          }
-        })
-        // if (categorySearch.length === 0) res.json(categorySearch)
-        res.json(categorySearch)
-      } else res.json([])
+      res.status(200).json({ success: true, outCategories })
     }
-
-  } catch(e) {
-    handlerError(e, res)
+  } catch (e) {
+    handlerError(e, res, { endpoint: '/api/category get /' })
   }
 })
 
-router.get('/pagination', async (req: Request, res: Response) => {
+// get category по id
+router.get('/:categoryId', async (req: Request, res: Response) => {
   try {
-    let cats: ICategory[] = []
-    const sortField = req.query.sortfield as string
-    const sortParam = req.query.sortparam as 'true' | 'false'    
+    console.log('start   get category по id   /:categoryId')
+    const categoryId = req.params.categoryId
 
-    if (!sortField || !['true', 'false'].includes(sortParam)) {
-      res.status(400).json({ message: 'Invalid sort field or sort param' })
-    }
-
-    // Создаем объект сортировки
-    const sortObject: { [key: string]: SortOrder } = { [sortField]: sortParam === 'false' ? -1 : 1 }
-
-    const limit: number = Number(req.query.limit)
-    const skip: number = Number(req.query.skip)
-    // let sortParam = 1
-    // if (sortparam === 'true') {
-    //   console.log('true')      
-    //   sortParam = 1
-    // } else if (sortparam === 'false') {
-    //   console.log('false')      
-    //   sortParam = -1
-    // }
-    console.log('limit=', limit)
-    console.log('skip=', skip)
-    console.log('sortField=', sortField)
-    console.log('sortParam=', sortParam)     
-    let categoriesItems: ICategory[] = await Category
-      .find()
-      .sort(sortObject)
-      .skip(skip)
-      .limit(limit)
-      // .aggregate([
-      //   { $skip : skip },
-      //   { $limit : limit },
-      //   {  $sort : { [sortField]: sortParam } }
-      // ])
-
-    //  language = ru
-    if (req.headers['accept-language'] === 'ru') {
-      const rucategories: IRuCategory[] = await Rucategory.find()
-      // console.log('rucategories=', rucategories)
-      if (rucategories.length === 0) {
-        res.status(400).json({ message: 'No rucategories found' })
-      } else {  
-      categoriesItems.map((category: ICategory) => {       
-        console.log('category._id=', category._id)
-                
-        const rucategory: IRuCategory|undefined = rucategories.find(
-          (cat_ru: IRuCategory) => cat_ru.categoryId.toString() === category._id.toString()
-        )
-        console.log('rucategory=', rucategory)
-        const cat: ICategory = {
-          _id : category._id,
-          name: rucategory!.name,
-          description: rucategory!.description,
-          link: category.link
-        }
-        cats.push(cat)        
+    // Проверяем, является ли categoryId валидным ObjectId
+    if (!Types.ObjectId.isValid(categoryId as string)) {
+      res.status(400).json({
+        success: false,
+        message: 'Incorrect category ID format.',
       })
-      console.log('cats= ', cats)
-      categoriesItems = cats
-      //res.json(cats)
-      }    
+      return
     }
-      
-    res.json(categoriesItems)
-    console.log('categoriesItems=', categoriesItems)   
-  } catch(e) {
-    handlerError(e, res)
+
+    const category = await Category.findById(categoryId)
+
+    if (!category) {
+      res.status(200).json({
+        success: false,
+        message: 'Category not found.',
+      })
+      return
+    }
+    console.log('get(/:categoryId)', category)
+
+    res.status(200).json({ success: true, category })
+  } catch (e) {
+    handlerError(e, res, {
+      endpoint: '/api/category get /:categoryId',
+      categoryId: req.params.categoryId,
+    })
   }
 })
 
-const handlerError = (e: unknown, res: Response) => {
-  if (e instanceof Error) { 
-    res.status(500).json({message: 'Что-то пошло не так.'+ (e.message ?? e.name
-    )})
-  } else {
-    console.log('Unknown error:', e)
+// get field user.confirmed
+router.get('/user/confirmed', async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.user.userId)
+    if (!user) {
+      res.status(404).json({ success: false, confirmed: false })
+      return
+    }
+
+    res.status(200).json({ success: true, confirmed: user.confirmed })
+  } catch (e) {
+    handlerError(e, res, {
+      endpoint: '/api/category get /user/confirmed',
+      userId: req.user.userId,
+    })
   }
-}
+})
 
 export default router

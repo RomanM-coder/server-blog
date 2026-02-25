@@ -1,15 +1,23 @@
 {
   "compilerOptions": {
-    "target": "ES6", // Версия JavaScript
-    "module": "commonjs", // Модульная система
+    // "target": "ESNext",
+    // "module": "ESNext", // современный Node.js (версии 18+)
+    "target": "ES2020", // Версия JavaScript
+    "module": "commonjs", // Модульная система, использование require()
     "strict": true, // Включение строгой типизации
     "esModuleInterop": true, // Упрощение работы с CommonJS и ES модулями
-    "strictNullChecks": true,    
-    // "skipLibCheck": true, // Пропуск проверки типов в библиотеках
+    "strictNullChecks": true,
+    "skipLibCheck": true, // Пропуск проверки типов в библиотеках
     // "forceConsistentCasingInFileNames": true, // Проверка регистра имен файлов
     "outDir": "./dist", // Папка для скомпилированных файлов
-    "rootDir": "./src"//,
-    //"typeRoots": ["./types"]// "./node_modules/@types", 
+    "rootDir": "./src",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "lib": ["es2020"],
+    "types": ["node", "express"],
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "allowSyntheticDefaultImports": true
+    //"typeRoots": ["./types"]// "./node_modules/@types",
   },
   "include": ["src/**/*"], // Какие файлы компилировать
   "exclude": ["node_modules"] // Какие файлы игнорировать

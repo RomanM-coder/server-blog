@@ -1,0 +1,16 @@
+# Установить LF для всех текстовых файлов (кроссплатформенно)
+* text=auto eol=lf
+
+# Исключения для файлов, где важны CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Бинарные файлы — без конвертации
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

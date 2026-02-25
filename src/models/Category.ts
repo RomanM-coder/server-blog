@@ -1,11 +1,13 @@
-import { Schema, model, Types } from 'mongoose'
+import { Schema, model } from 'mongoose'
 
-const schema = new Schema({
-  name: { type: String, required: true, unique: true },
-  link: { type: String, required: true },
-  description: { type: String, required: true }
-},
-  { versionKey: false })
+const schema = new Schema(
+  {
+    name: { type: String, required: true, unique: true },
+    link: { type: String, required: true },
+    description: { type: String, required: true },
+  },
+  { versionKey: false },
+)
 
 export default model('Category', schema)
 
