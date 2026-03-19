@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import { Server } from 'socket.io'
 import User from '../models/User'
 import Post from '../models/Post'
+import Category from '../models/Category'
 import Rupost from '../models/Rupost'
 import authMiddleware from '../middleware/auth.middleware'
 import adminMiddleware from '../middleware/admin.middleware'
@@ -15,6 +16,13 @@ const router = Router()
 
 interface CustomRequestIo extends Request {
   io?: Server // Добавляем свойство io
+}
+
+interface ICategory {
+  _id: Types.ObjectId
+  name: string
+  link: string
+  description: string
 }
 
 interface IUser {
@@ -458,8 +466,13 @@ router.get(
       }
       console.log('countComments=', count)
       const outPost = (await Post.findById(postId)) as IPost
+      const outCategory = (await Category.findById(
+        outPost.categoryId,
+      )) as ICategory
 
-      res.status(200).json({ success: true, outComments, count, outPost })
+      res
+        .status(200)
+        .json({ success: true, outComments, count, outPost, outCategory })
     } catch (e) {
       handlerError(e, res, {
         endpoint: '/api/admin/comment get /detail/pagination',
@@ -633,26 +646,22 @@ router.post('/insert', async (req: CustomRequestIo, res: Response) => {
     )) as IUser
 
     if (!user) {
-      res
-        .status(400)
-        .json({
-          success: false,
-          message: 'User not found',
-          forUserId: req.user.userId,
-        })
+      res.status(400).json({
+        success: false,
+        message: 'User not found',
+        forUserId: req.user.userId,
+      })
       console.error(`User not found for comment ${comment._id}`)
       return
     }
 
     const post = (await Post.findById(comment.postId)) as IPost
     if (!post) {
-      res
-        .status(404)
-        .json({
-          success: false,
-          message: 'Post not found',
-          forUserId: req.user.userId,
-        })
+      res.status(404).json({
+        success: false,
+        message: 'Post not found',
+        forUserId: req.user.userId,
+      })
       console.error(`Post not found for comment ${comment._id}`)
       return
     }
@@ -713,25 +722,21 @@ router.put(
       // const { _id, like, dislike } = req.body
       const _id = req.body._id as Types.ObjectId
       if (!_id) {
-        res
-          .status(404)
-          .json({
-            success: false,
-            message: 'Comment not found',
-            forUserId: req.user.userId,
-          })
+        res.status(404).json({
+          success: false,
+          message: 'Comment not found',
+          forUserId: req.user.userId,
+        })
       }
       const like = req.body.like as number
       const dislike = req.body.dislike as number
       const userId = new Types.ObjectId(req.user.userId)
       if (!userId) {
-        res
-          .status(404)
-          .json({
-            success: false,
-            message: 'User not found',
-            forUserId: req.user.userId,
-          })
+        res.status(404).json({
+          success: false,
+          message: 'User not found',
+          forUserId: req.user.userId,
+        })
       }
       console.log('_id=', _id)
       console.log('like=', like)
@@ -775,13 +780,11 @@ router.put(
           ?.to('adminSinglePost')
           .emit('server_edit_comment_response', emitMessage)
 
-        res
-          .status(200)
-          .json({
-            success: false,
-            message: 'vote once',
-            forUserId: req.user.userId,
-          })
+        res.status(200).json({
+          success: false,
+          message: 'vote once',
+          forUserId: req.user.userId,
+        })
       }
     } catch (e) {
       handlerError(e, res, {
@@ -839,13 +842,11 @@ router.delete(
       const comments = await Comment.find({ postId })
 
       if (!comments || comments.length === 0) {
-        res
-          .status(404)
-          .json({
-            success: false,
-            message: 'Comments not found',
-            forUserId: req.user.userId,
-          })
+        res.status(404).json({
+          success: false,
+          message: 'Comments not found',
+          forUserId: req.user.userId,
+        })
         return
       }
       console.log(
@@ -961,13 +962,11 @@ router.delete('/delete/:id', async (req: CustomRequestIo, res: Response) => {
     const comment = await Comment.findById(commentId)
 
     if (!comment) {
-      res
-        .status(404)
-        .json({
-          success: false,
-          message: 'Comment not found',
-          forUserId: req.user.userId,
-        })
+      res.status(404).json({
+        success: false,
+        message: 'Comment not found',
+        forUserId: req.user.userId,
+      })
       return
     }
 

@@ -17,7 +17,9 @@ router.get('/profile', authMiddleware, async (req: Request, res: Response) => {
   try {
     const user = await User.findById(userId)
     if (!user) {
-      res.status(404).json({ success: false, message: 'User not found' })
+      res
+        .status(404)
+        .json({ success: false, message: 'profilePage.toast.userNotFound' })
       return
     }
 
@@ -39,8 +41,7 @@ router.put('/profile', authMiddleware, async (req: Request, res: Response) => {
     if (!firstName && !lastName && !bio) {
       res.status(400).json({
         success: false,
-        message: 'At least one update field must be specified',
-        forUserId: req.user.userId,
+        message: 'profilePage.toast.leastOneUpdate',
       })
       return
     }
@@ -52,21 +53,17 @@ router.put('/profile', authMiddleware, async (req: Request, res: Response) => {
     )
     // .select('-password') !!
     if (!user) {
-      res
-        .status(404)
-        .json({
-          success: false,
-          message: 'User not found',
-          forUserId: req.user.userId,
-        })
+      res.status(404).json({
+        success: false,
+        message: 'profilePage.toast.userNotFound',
+      })
       return
     }
 
     res.json({
       success: true,
       userProfile: user,
-      message: 'Profile has been successfully updated',
-      forUserId: req.user.userId,
+      message: 'profilePage.toast.userUpdated',
     })
   } catch (e) {
     handlerError(e, res, { endpoint: '/api/user put /profile', userId: userId })
@@ -82,8 +79,7 @@ router.put(
       if (fileCount > 1) {
         res.status(200).json({
           success: false,
-          message: 'Maximum 1 file allowed for change avatar',
-          forUserId: req.user.userId,
+          message: 'profilePage.profileHeader.fileOne',
         })
         return
       }
@@ -97,13 +93,10 @@ router.put(
 
     try {
       if (!req.files || !req.files.avatar) {
-        res
-          .status(400)
-          .json({
-            success: false,
-            message: 'File not loaded',
-            forUserId: req.user.userId,
-          })
+        res.status(400).json({
+          success: false,
+          message: 'profilePage.profileHeader.fileNotLoaded',
+        })
         return
       }
 
@@ -111,25 +104,19 @@ router.put(
 
       // ✅ Проверка user (теперь из глобального типа)
       if (!req.user?.userId) {
-        res
-          .status(401)
-          .json({
-            success: false,
-            message: 'Invalid user data',
-            forUserId: req.user.userId,
-          })
+        res.status(401).json({
+          success: false,
+          message: 'profilePage.profileHeader.invalidUserData',
+        })
         return
       }
 
       const user = await User.findById(req.user.userId)
       if (!user) {
-        res
-          .status(404)
-          .json({
-            success: false,
-            message: 'User not found',
-            forUserId: req.user.userId,
-          })
+        res.status(404).json({
+          success: false,
+          message: 'profilePage.profileHeader.userNotFound',
+        })
         return
       }
 
@@ -137,8 +124,7 @@ router.put(
       if (!avatar.mimetype.startsWith('image/')) {
         res.status(400).json({
           success: false,
-          message: 'The file must be an image',
-          forUserId: req.user.userId,
+          message: 'profilePage.profileHeader.fileIsImage',
         })
         return
       }
@@ -146,8 +132,7 @@ router.put(
       if (avatar.size > 2 * 1024 * 1024) {
         res.status(400).json({
           success: false,
-          message: 'The file size should not exceed 2MB',
-          forUserId: req.user.userId,
+          message: 'profilePage.profileHeader.fileSize',
         })
         return
       }
@@ -224,8 +209,7 @@ router.put(
       res.json({
         success: true,
         avatar: user.avatar,
-        message: 'Avatar has been successfully updated',
-        forUserId: req.user.userId,
+        message: 'profilePage.profileHeader.avatarUpdatedSuccessfully',
       })
     } catch (error) {
       // ✅ Откат: удаляем новый файл если он был загружен
@@ -276,7 +260,6 @@ router.put(
       res.status(500).json({
         success: false,
         message: 'Error updating the avatar',
-        forUserId: req.user.userId,
       })
     }
   },

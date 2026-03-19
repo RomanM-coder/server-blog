@@ -244,7 +244,9 @@ router.get('/', async (req: Request, res: Response) => {
     const countUsers = await User.countDocuments(dateFilter)
 
     if (!users) {
-      res.status(200).json({ success: false, message: 'Users not found' })
+      res
+        .status(200)
+        .json({ success: false, message: 'adminUser.toast.usersNotFound' })
       return
     }
 
@@ -266,7 +268,7 @@ router.post(
       if (fileCount > 1) {
         res.status(400).json({
           success: false,
-          message: 'Maximum 1 file allowed for change avatar',
+          message: 'adminUser.toast.fileOne',
           forUserId: req.user.userId,
         })
         return
@@ -302,7 +304,7 @@ router.post(
         // throw new Error('Ожидался массив votecomment')
         res.status(400).json({
           success: false,
-          message: 'Expected array votecomment',
+          message: 'adminUser.toast.arrayVotecomment',
           forUserId: req.user.userId,
         })
       }
@@ -310,7 +312,7 @@ router.post(
         // throw new Error('Ожидался массив votepost')
         res.status(400).json({
           success: false,
-          message: 'Expected array votepost',
+          message: 'adminUser.toast.arrayVotepost',
           forUserId: req.user.userId,
         })
       }
@@ -363,7 +365,7 @@ router.put(
       if (fileCount > 1) {
         res.status(400).json({
           success: false,
-          message: 'Maximum 1 file allowed for change avatar',
+          message: 'adminUser.toast.fileOne',
           forUserId: req.user.userId,
         })
         return
@@ -400,7 +402,7 @@ router.put(
         // throw new Error('Ожидался массив votecomment')
         res.status(400).json({
           success: false,
-          message: 'Expected array votecomment',
+          message: 'adminUser.toast.arrayVotecomment',
           forUserId: req.user.userId,
         })
       }
@@ -408,7 +410,7 @@ router.put(
         // throw new Error('Ожидался массив votepost')
         res.status(400).json({
           success: false,
-          message: 'Expected array votepost',
+          message: 'adminUser.toast.arrayVotepost',
           forUserId: req.user.userId,
         })
       }
@@ -461,7 +463,7 @@ router.delete('/delete/:id', async (req: CustomRequestIo, res) => {
     if (!id) {
       res.status(404).json({
         success: false,
-        message: 'User not found',
+        message: 'adminUser.toast.userNotFound',
         forUserId: req.user.userId,
       })
       return
@@ -496,7 +498,9 @@ router.get('/:id', async (req: Request, res: Response) => {
     const id = new Types.ObjectId(req.params.id as string)
     const user = await User.findById(id)
     if (!user) {
-      res.status(404).json({ success: false, message: 'User not found' })
+      res
+        .status(404)
+        .json({ success: false, message: 'adminUser.toast.userNotFound' })
       return
     }
     res.status(200).json({ success: true, outUser: user })
@@ -517,7 +521,7 @@ router.put(
       if (fileCount > 1) {
         res.status(200).json({
           success: false,
-          message: 'Maximum 1 file allowed for change avatar',
+          message: 'adminUser.profileHeader.fileOne',
           forUserId: req.user.userId,
         })
         return
@@ -531,13 +535,11 @@ router.put(
 
     try {
       if (!req.files || !req.files.avatar) {
-        res
-          .status(400)
-          .json({
-            success: false,
-            message: 'File not loaded',
-            forUserId: req.user.userId,
-          })
+        res.status(400).json({
+          success: false,
+          message: 'adminUser.profileHeader.fileNotLoaded',
+          forUserId: req.user.userId,
+        })
         return
       }
 
@@ -545,25 +547,21 @@ router.put(
 
       // ✅ Проверка user (теперь из глобального типа)
       if (!req.user?.userId) {
-        res
-          .status(401)
-          .json({
-            success: false,
-            message: 'Invalid user data',
-            forUserId: req.user.userId,
-          })
+        res.status(401).json({
+          success: false,
+          message: 'adminUser.profileHeader.invalidUserData',
+          forUserId: req.user.userId,
+        })
         return
       }
 
       const user = await User.findById(req.body.userId)
       if (!user) {
-        res
-          .status(404)
-          .json({
-            success: false,
-            message: 'User not found',
-            forUserId: req.user.userId,
-          })
+        res.status(404).json({
+          success: false,
+          message: 'adminUser.profileHeader.userNotFound',
+          forUserId: req.user.userId,
+        })
         return
       }
 
@@ -571,7 +569,7 @@ router.put(
       if (!avatar.mimetype.startsWith('image/')) {
         res.status(400).json({
           success: false,
-          message: 'The file must be an image',
+          message: 'adminUser.profileHeader.fileIsImage',
           forUserId: req.user.userId,
         })
         return
@@ -580,7 +578,7 @@ router.put(
       if (avatar.size > 2 * 1024 * 1024) {
         res.status(400).json({
           success: false,
-          message: 'The file size should not exceed 2MB',
+          message: 'adminUser.profileHeader.fileSize',
           forUserId: req.user.userId,
         })
         return
@@ -664,7 +662,7 @@ router.put(
       res.json({
         success: true,
         avatar: user.avatar,
-        message: 'Avatar has been successfully updated',
+        message: 'adminUser.profileHeader.avatarUpdatedSuccessfully',
         forUserId: req.user.userId,
       })
     } catch (error) {

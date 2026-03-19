@@ -38,6 +38,7 @@ app.set('trust proxy', 1)
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
+let sessionStore: MongoStore | undefined
 // 3. Функция инициализации сессий
 function setupSessions() {
   app.use(
@@ -73,11 +74,14 @@ console.log('✅ Сессии настроены')
 
 app.use(
   cors.default({
-    // origin: 'https://splinterblog.ru',
-    origin: 'http://localhost:5173', //'*',
+    origin:
+      process.env.NODE_ENV && process.env.NODE_ENV === 'production'
+        ? 'https://splinterblog.ru'
+        : 'http://localhost:5173',
+    //origin: 'http://localhost:5173', //'*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    // allowedHeaders: ['Content-Type', 'Authorization']
+    // allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   }),
 )
 
@@ -112,7 +116,10 @@ app.use((req, res, next) => {
     safeFileNames: true,
     preserveExtension: true,
     useTempFiles: true,
-    tempFileDir: path.join(__dirname, '../temp/uploads/'), // папка для временных файлов
+    tempFileDir:
+      process.env.NODE_ENV && process.env.NODE_ENV === 'production'
+        ? '/var/www/blog/server/temp/uploads'
+        : path.join(__dirname, '../temp/uploads/'), // папка для временных файлов
     //tempFileDir: '/var/www/blog/server/temp/uploads',
   })(req, res, next)
 })
@@ -141,7 +148,7 @@ const io = new Server.Server(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'], // Разрешаем нужные заголовки
+    // allowedHeaders: ['Content-Type', 'Authorization'], // Разрешаем нужные заголовки
     credentials: true, // Разрешаем передачу кук и токенов
   },
 })
@@ -167,6 +174,16 @@ app.use((req: CustomRequestIo, res: Response, next: NextFunction) => {
 
   next()
 })
+
+// app.use(
+//   '/postFiles',
+//   express.static(path.join(__dirname, '../postFiles'), {
+//     // '/var/www/blog/server/postFiles'
+//     maxAge: '1d',
+//     etag: true,
+//   }),
+// )
+// app.use('/postFiles', express.static('postFiles'))
 
 app.use('/api/auth', authRouter)
 app.use('/api/user', userRouter)

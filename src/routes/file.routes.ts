@@ -11,6 +11,7 @@ import authMiddleware from '../middleware/auth.middleware'
 import { UploadedFile } from 'express-fileupload'
 import { Types } from 'mongoose'
 import { handlerError } from '../handlers/handlerError'
+import { log } from 'console'
 
 const router = express.default.Router()
 
@@ -236,6 +237,7 @@ router.get('/download', async (req: Request, res: Response) => {
   try {
     // 2. Поиск категории
     const category = await Category.findById(req.query.id)
+
     if (!category) {
       res.status(404).json({ message: 'Category not found' })
     } else {

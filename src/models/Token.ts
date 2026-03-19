@@ -8,14 +8,14 @@ const tokenSchema = new Schema(
       ref: User.modelName,
       required: true,
     },
-    token: { type: String, required: true },
+    tokenHash: { type: String, required: true },
     createdAt: {
       type: Date,
       default: Date.now,
       expires: 3600, // ← автоматически удалит документ через 1 час
     },
   },
-  { versionKey: false }
+  { versionKey: false },
 )
 
 export default model('Token', tokenSchema)

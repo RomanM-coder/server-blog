@@ -1,15 +1,19 @@
 import { Router, Request, Response } from 'express'
+import * as mongoose from 'mongoose'
 import User from '../models/User'
 import Token from '../models/Token'
 import bcrypt from 'bcrypt'
 import { check, validationResult } from 'express-validator'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import nodemailer from 'nodemailer'
 import { Types } from 'mongoose'
 import authMiddleware from '../middleware/auth.middleware'
 import { handlerError } from '../handlers/handlerError'
 import { verifyCaptcha } from '../helper/verifyCaptcha'
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 import 'express-session'
+import { deleteUserSessions } from '../helper/sessionsDelete'
 
 declare module 'express-session' {
   interface SessionData {
@@ -64,7 +68,7 @@ const router = Router()
 // ТОЛЬКО для проверки доступности email (регистрация)
 router.post(
   '/check-email',
-  [check('email', 'Некорректный email').not().isEmpty().isEmail()],
+  [check('email', 'Incorrect email address').not().isEmpty().isEmail()],
   async (req: Request, res: Response) => {
     try {
       const { email } = req.body
@@ -134,31 +138,25 @@ router.post(
 router.post(
   '/register',
   [
-    check('email', 'Некорректный email').not().isEmpty().isEmail(),
-    check('password', 'Минимальная длина пароля 6 символов')
+    check('email', 'Incorrect email address').not().isEmpty().isEmail(),
+    check('password', 'The minimum password length is 6 characters')
       .not()
       .isEmpty()
       .isLength({ min: 6 }),
   ],
   async (req: Request, res: Response): Promise<void> => {
-    // console.log('req.files: ', req.files)
     console.log('req.body: ', req.body)
 
     try {
       const errors = validationResult(req)
       console.log('errors=', errors)
       if (!errors.isEmpty()) {
-        // if (req.files && req.files.file && !Array.isArray(req.files.file)) {
-        //   const avatar = req.files.file as UploadedFile
-        //   await fileService.deleteFile(avatar.tempFilePath)
-        // }
         res.status(400).json({
           success: false,
           message: 'Incorrect data during registration',
         })
         return
       }
-      // const { email, password } = req.body
       const { email, password, captchaToken } = req.body
 
       // Проверяем капчу
@@ -176,28 +174,18 @@ router.post(
       const candidate = await User.findOne({ email })
 
       if (candidate) {
-        // Если файл один
-        // if (req.files && req.files.file && !Array.isArray(req.files.file)) {
-        //   const avatar = req.files.file as UploadedFile
-        //   await fileService.deleteFile(avatar.tempFilePath)
-        // }
         res.status(200).json({
           success: false,
           message: 'Such a user already exists',
         })
         return
       }
-      // const avatar = req.files!.file as UploadedFile
       const hashedPassword = await bcrypt.hash(password, 12)
       console.log('hashedPassword')
 
       const user = new User({
         email: email,
-        // avatar: avatar.name, // по default '/uploads/avatars/default-avatar.svg'
         password: hashedPassword,
-        // verified: false,
-        // role: '',
-        // block: false,
         votepost: [],
         votecomment: [],
         postsPublishedId: [],
@@ -206,20 +194,10 @@ router.post(
 
       console.log(' await user.save')
 
-      // const currentUser = await User.findOne({ email })
-      // const filePath = `${FILE_REG_PATH}\\${currentUser!._id}`
-      // console.log('filePath', filePath)
-
-      // await fileService.createDir(filePath) // new File({userId: currentUser.id, name: ''})
-
       res
         .status(200)
         .json({ success: true, message: 'The user has been created' })
     } catch (e) {
-      // if (req.files && req.files.file && !Array.isArray(req.files.file)) {
-      //   const avatar = req.files.file as UploadedFile
-      //   await fileService.deleteFile(avatar.tempFilePath)
-      // }
       handlerError(e, res, {
         endpoint: '/api/auth post /register',
         email: req.body.email,
@@ -228,81 +206,17 @@ router.post(
   },
 )
 
-// перекинуть в file.routes.ts
-// запись дефолтного аватара в базу File сразу после регистрации user
-// router.post('/register-avatar', async (req: Request, res: Response) => {
-//   try {
-//     const { email, password } = req.body
-
-//     // Проверяем существование пользователя
-//     const candidate = await User.findOne({ email })
-//     if (!candidate) {
-//       // Проверяем, что file существует и это не массив
-//       // if (req.files && req.files.file && !Array.isArray(req.files.file)) {
-//       //   const uploadedFile = req.files.file
-//       //   if (uploadedFile.tempFilePath) {
-//       //     if (fs.existsSync(uploadedFile.tempFilePath)) {
-//       //       fs.unlinkSync(uploadedFile.tempFilePath)
-//       //     }
-//       //   }
-//       // }
-//       res.status(404).json({ error: 'Такого пользователя не существует' })
-//       return
-//     }
-
-//     interface AvatarData {
-//       name: string
-//       type: string
-//       size: number
-//       userId: Types.ObjectId
-//     }
-
-//     // Определяем аватар
-//     const avatarData: AvatarData = {
-//       name: 'default-avatar.svg',
-//       type: 'svg',
-//       size: 617,
-//       userId: candidate._id,
-//     }
-
-//     const dbFile = new File(avatarData)
-//     await dbFile.save()
-
-//     res.status(200).json({
-//       success: true,
-//       avatar: {
-//         userId: candidate._id,
-//         email: candidate.email,
-//         avatar: candidate.avatar,
-//         name: 'default-avatar.svg',
-//         type: 'svg',
-//         size: 617,
-//       },
-//     })
-//   } catch (error) {
-//     // Удаляем временные файлы при ошибке
-//     // if (req.files && req.files.file && !Array.isArray(req.files.file)) {
-//     //   const uploadedFile = req.files.file
-//     //   if (uploadedFile.tempFilePath) {
-//     //     if (fs.existsSync(uploadedFile.tempFilePath)) {
-//     //       fs.unlinkSync(uploadedFile.tempFilePath)
-//     //     }
-//     //   }
-//     // }
-//     res.status(500).json({ error: 'Ошибка сервера' })
-//   }
-// })
-
 // api/auth/confirmEmail
 router.post('/confirmEmail', async (req, res) => {
   try {
     const email = req.body.email
     const user = await User.findOne({ email })
     if (!user) {
-      // ✅ Для безопасности не сообщаем, что пользователь не найден!! -переделать
+      // ✅ Для безопасности не сообщаем, что пользователь не найден
       res.status(200).json({
-        success: false, // Возвращаем success: true чтобы не раскрывать информацию
-        message: 'The user was not found', //'Если email зарегистрирован, письмо отправлено'
+        success: true, // Возвращаем success: true чтобы не раскрывать информацию
+        message:
+          'If a user with this email address exists, they will receive a link to confirm their email address.',
       })
       return
     } else {
@@ -311,18 +225,27 @@ router.post('/confirmEmail', async (req, res) => {
           'JWT_SECRET is not defined in the environment variables.',
         )
       }
-      const confirm = jwt.sign(
-        { userId: user._id },
-        // config.get<string>('jwtSecret'),
-        JWT_SECRET,
-        // {expiresIn: 60}
-        { expiresIn: '1h' },
-      )
-      const confirmToken = new Token({ userId: user._id, token: confirm })
+      // const confirm = jwt.sign(
+      //   { userId: user._id },
+      //   // config.get<string>('jwtSecret'),
+      //   JWT_SECRET,
+      //   // {expiresIn: 60}
+      //   { expiresIn: '1h' },
+      // )
+
+      const generateConfirmEmailToken = crypto.randomBytes(32).toString('hex')
+      const hashConfirmEmail = crypto
+        .createHash('sha256')
+        .update(generateConfirmEmailToken)
+        .digest('hex')
+
+      const confirmToken = new Token({
+        userId: user._id,
+        tokenHash: hashConfirmEmail,
+      })
       await confirmToken.save()
 
-      // const messageConfirm = `${BASE_URL_FRONT}/auth/verify/${user.email}/${user._id}/${confirm}`
-      const confirmLink = `${BASE_URL_FRONT}/auth/confirm-email/${confirm}`
+      const confirmLink = `${BASE_URL_FRONT}/auth/confirm-email/${generateConfirmEmailToken}`
       console.log('confirmLink ', confirmLink)
 
       const emailTemplate = (username: string, link: string) => `
@@ -376,10 +299,11 @@ router.post('/confirmEmail', async (req, res) => {
       //   emailTemplate(user.email, messageConfirm)
       // )
       console.log('----------------ok--------------')
-      // Всегда возвращаем одинаковый ответ для безопасности !! -переделать
+      // Всегда возвращаем одинаковый ответ для безопасности
       res.status(200).json({
         success: true,
-        message: 'A token-based email has been sent to your email address',
+        message:
+          'If a user with this email address exists, they will receive a link to confirm their email address.',
       })
     }
   } catch (e) {
@@ -418,15 +342,6 @@ router.post(
         return
       }
 
-      // if (!email || !email.includes('@')) {
-      //   res.status(404).json({
-      //     success: false,
-      //     message: 'Invalid email format',
-      //     confirm: false,
-      //   })
-      //   return
-      // }
-
       const user = await User.findOne({ email })
 
       if (!user) {
@@ -438,7 +353,7 @@ router.post(
         return
       }
 
-      res.status(200).json({ success: true, confirm: user!.confirmed })
+      res.status(200).json({ success: true, confirm: user.confirmed })
     } catch (e) {
       handlerError(e, res, {
         endpoint: '/api/auth post /informConfirmEmail',
@@ -452,13 +367,44 @@ router.post(
 router.get('/confirm-email/:token', async (req: Request, res: Response) => {
   try {
     const { token } = req.params
+    console.log('token: ', token)
+    // Проверяем, есть ли токен
+    if (!token) {
+      res.status(400).json({
+        success: false,
+        message: 'Token is required',
+      })
+      return
+    }
+    // Преобразуем в строку
+    // const tokenString = Array.isArray(token) ? token[0] : token
 
-    const tokenBd = await Token.findOne({ token }).populate('userId')
-    console.log('token: ', tokenBd)
+    // Проверяем, что это строка
+    if (typeof token !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid token format',
+      })
+      return
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+    const tokenBd = await Token.findOne({ tokenHash }).populate('userId')
+    console.log('tokenBd: ', tokenBd)
     if (!tokenBd) {
       res.status(400).json({
         success: false,
         message: 'Invalid or expired confirmation link',
+      })
+      return
+    }
+
+    const expiryTime = new Date(tokenBd.createdAt.getTime() + 60 * 60 * 1000)
+    if (tokenBd.createdAt && new Date() > expiryTime) {
+      await Token.findOneAndDelete({ _id: tokenBd._id })
+      res.status(400).json({
+        success: false,
+        message: 'Confirmation link has expired',
       })
       return
     }
@@ -475,7 +421,6 @@ router.get('/confirm-email/:token', async (req: Request, res: Response) => {
     await User.findByIdAndUpdate(user._id, { confirmed: true })
     await Token.findOneAndDelete({ _id: tokenBd._id })
 
-    // res.send('email confirmed sucessfully')
     res.status(200).json({
       success: true,
       message: 'Email confirmed successfully',
@@ -488,12 +433,300 @@ router.get('/confirm-email/:token', async (req: Request, res: Response) => {
   }
 })
 
+// limiter для /forget-password эндпоинта
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: {
+    success: false,
+    message: 'Too many attempts, try again in an hour',
+  },
+  keyGenerator: (req) => {
+    const forwardedFor = req.headers['x-forwarded-for']
+    const realIp = Array.isArray(forwardedFor)
+      ? forwardedFor[0]
+      : forwardedFor?.split(',')[0]?.trim()
+
+    const detectedIp = req.ip || realIp || req.socket.remoteAddress || 'unknown'
+
+    // 2. 👇 ИСПОЛЬЗУЕМ helper для безопасной работы с IPv6
+    // Он автоматически применит маску подсети (по умолчанию /64)
+    return ipKeyGenerator(detectedIp)
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+// api/auth/forget-password
+router.post('/forget-password', forgotPasswordLimiter, async (req, res) => {
+  try {
+    const email = req.body.email
+    const user = await User.findOne({ email })
+    if (!user) {
+      // ✅ Для безопасности не сообщаем, что пользователь не найден
+      //'Если email зарегистрирован, письмо отправлено'
+      res.status(200).json({
+        success: true, // Возвращаем success: true чтобы не раскрывать информацию
+        message:
+          'If a user with this email exists, a link to reset the password is sent to them',
+      })
+      return
+    } else {
+      if (!JWT_SECRET) {
+        throw new Error(
+          'JWT_SECRET is not defined in the environment variables.',
+        )
+      }
+      // const forgetPassword = jwt.sign(
+      //   { userId: user._id },
+      //   // config.get<string>('jwtSecret'),
+      //   JWT_SECRET,
+      //   // {expiresIn: 60}
+      //   { expiresIn: '1h' },
+      // )
+      const generateResetToken = crypto.randomBytes(32).toString('hex')
+      const hashForgetPassword = crypto
+        .createHash('sha256')
+        .update(generateResetToken)
+        .digest('hex')
+
+      const forgetPasswordToken = new Token({
+        userId: user._id,
+        tokenHash: hashForgetPassword,
+      })
+      await forgetPasswordToken.save()
+
+      const forgetPasswordLink = `${BASE_URL_FRONT}/auth/reset-password/${generateResetToken}`
+      console.log('forgetPasswordLink ', forgetPasswordLink)
+
+      const emailTemplate = (username: string, link: string) => `
+      <p><b>Hi, ${username}!</b></p>
+      <p>To confirm the password reset, click on the link to the login page of a Simple Blog:</p>
+      <p>${link}</p>`
+      console.log('emailTemplate ', emailTemplate)
+
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.yandex.ru',
+        port: 465,
+        secure: true,
+        auth: {
+          user: process.env.EMAIL_PROGRAMM || 'rm.splinter@yandex.ru',
+          pass: process.env.EMAIL_PASSWORD,
+        },
+      })
+
+      const mailOptions = {
+        from: `"Simple Blog" <${
+          process.env.EMAIL_PROGRAMM || 'rm.splinter@yandex.ru'
+        }>`,
+        to: user.email as string,
+        subject: 'Сброс пароля - Simple Blog',
+        html: emailTemplate(user.email as string, forgetPasswordLink),
+        text: `Для подтверждения сброса пароля перейдите по ссылке: ${forgetPasswordLink}`,
+      }
+      await transporter.sendMail(mailOptions)
+
+      console.log('----------------ok--------------')
+      // Всегда возвращаем одинаковый ответ для безопасности
+      res.status(200).json({
+        success: true,
+        message:
+          'If a user with this email exists, a link to reset the password is sent to them',
+      })
+    }
+  } catch (e) {
+    console.log('error', e)
+    if (e instanceof Error && e.message.includes('JWT_SECRET')) {
+      res.status(500).json({
+        success: false,
+        message: 'Server configuration error',
+      })
+    } else {
+      handlerError(e, res, {
+        endpoint: '/api/auth post /forget-password',
+        email: req.body.email,
+      })
+    }
+  }
+})
+
+// api/auth/forget-password/:token
+router.get('/reset-password/:token', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params
+
+    // Проверяем, есть ли токен
+    if (!token) {
+      res.status(400).json({
+        success: false,
+        message: 'Token is required',
+      })
+      return
+    }
+
+    // Проверяем, что это строка
+    if (typeof token !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid token format',
+      })
+      return
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+
+    const tokenBd = await Token.findOne({ tokenHash }).populate('userId')
+    console.log('token: ', tokenBd)
+    if (!tokenBd) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid or outdated reset link',
+      })
+      return
+    }
+
+    const expiryTime = new Date(tokenBd.createdAt.getTime() + 60 * 60 * 1000)
+    if (tokenBd.createdAt && new Date() > expiryTime) {
+      await Token.findOneAndDelete({ _id: tokenBd._id })
+      res.status(400).json({
+        success: false,
+        message: 'Reset link has expired',
+      })
+      return
+    }
+
+    const user = tokenBd.userId as unknown as IUser
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'User not found',
+      })
+      return
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Enter a new password',
+    })
+  } catch (e) {
+    handlerError(e, res, {
+      endpoint: '/api/auth get /reset-password/:token',
+    })
+  }
+})
+
+// POST - отправка нового пароля
+router.post('/reset-password', async (req: Request, res: Response) => {
+  try {
+    const { token, newPassword } = req.body // ← токен из формы!
+
+    // Проверяем, есть ли токен
+    if (!token) {
+      res.status(400).json({
+        success: false,
+        message: 'Token is required',
+      })
+      return
+    }
+    // Проверяем, что это строка
+    if (typeof token !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid token format',
+      })
+      return
+    }
+
+    // Проверяем, что пароль есть
+    if (!newPassword) {
+      res.status(400).json({
+        success: false,
+        message: 'New password is required',
+      })
+      return
+    }
+
+    // Проверяем, что это строка
+    if (typeof newPassword !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'New password must be a string',
+      })
+      return
+    }
+
+    console.log('1. Token из запроса:', token)
+    console.log('2. Длина токена:', token.length)
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+    console.log('3. Хеш токена:', tokenHash)
+    console.log('4. Длина хеша:', tokenHash.length)
+
+    console.log('Тип tokenHash в запросе:', typeof tokenHash)
+    console.log('Тип tokenHash в схеме:', Token.schema.paths.tokenHash.instance)
+
+    const tokenBd = await Token.findOne({
+      tokenHash: tokenHash.toString(),
+    }).populate('userId')
+    console.log('5. Найдено в базе:', !!tokenBd)
+
+    if (!tokenBd) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset link',
+      })
+      return
+    }
+    // Проверка срока действия
+    const expiryTime = new Date(tokenBd.createdAt.getTime() + 60 * 60 * 1000)
+    if (tokenBd.createdAt && new Date() > expiryTime) {
+      await Token.findOneAndDelete({ _id: tokenBd._id })
+      res.status(400).json({
+        success: false,
+        message: 'Reset link has expired',
+      })
+      return
+    }
+
+    const user = tokenBd.userId as unknown as IUser
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'User not found',
+      })
+      return
+    }
+
+    // Хешируем и сохраняем новый пароль
+    const hashedPassword = await bcrypt.hash(newPassword, 12)
+    await User.findByIdAndUpdate(user._id, {
+      password: hashedPassword,
+    })
+
+    // 🔥 БЕЗОПАСНОЕ УДАЛЕНИЕ СЕССИЙ
+    // const deletedCount = await deleteUserSessions(user._id.toString())
+    // console.log(`✅ Удалено ${deletedCount} сессий`)
+
+    // Удаляем использованный токен
+    await Token.findByIdAndDelete(tokenBd._id)
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully',
+    })
+  } catch (e) {
+    handlerError(e, res)
+  }
+})
+
 // api/auth/login
 router.post(
   '/login',
   [
-    check('email', 'Некорректный email.').not().isEmpty().isEmail(),
-    check('password', 'Введите пароль.').not().isEmpty().exists(),
+    check('email', 'Incorrect email address').not().isEmpty().isEmail(),
+    check('password', 'Enter the password').not().isEmpty().exists(),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -508,12 +741,10 @@ router.post(
         })
         return
       }
-      // const { email, password } = req.body
       const { email, password, captchaToken } = req.body
 
       // Проверяем капчу
       const isValid = await verifyCaptcha(captchaToken)
-      // console.log('captchaToken=', captchaToken)
 
       if (!isValid) {
         res.status(400).json({
@@ -565,7 +796,7 @@ router.post(
           // req.session.userId = user._id.toString()
           // req.session.role = user.role.toString()
 
-          // // ✅ ЯВНО СОХРАНЯЕМ
+          // ✅ ЯВНО СОХРАНЯЕМ
           // await new Promise((resolve, reject) => {
           //   req.session.save((err) => {
           //     if (err) {
@@ -651,5 +882,22 @@ router.put(
     }
   },
 )
+
+router.get('/real-user', async (req: Request, res: Response) => {
+  try {
+    console.log('email:', req.query.email)
+
+    const user = await User.findOne({ email: req.query.email })
+    console.log('real-user---------------------- ', user)
+    if (!user) {
+      res.status(404).json({ success: false })
+      return
+    } else res.status(200).json({ success: true })
+  } catch (e) {
+    handlerError(e, res, {
+      endpoint: '/api/auth get /real-user',
+    })
+  }
+})
 
 export default router
